@@ -1,113 +1,115 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <getopt.h>
-#include <stdint.h>
+#include <stdio.h>    	// standard input/output header
+#include <stdlib.h>   	// Standard library header
+#include <string.h>   	// String handling functions header
+#include <unistd.h>   	// use read(), write(), close()
+#include <arpa/inet.h>  // Network address conversion functions
+#include <sys/socket.h> // Socket-related functions
+#include <getopt.h>  	// Command-line option parsing header
+#include <stdint.h>  	// Fixed-width integer types
 
-#include "../edge/byte_op.h"
+#include "../edge/byte_op.h"  // include byte_op.h header
 
-#define BUFLEN        1024
-#define OPCODE_SUM    1
-#define OPCODE_REPLY  2
+#define BUFLEN        1024   // define Buffer size as 1024
+#define OPCODE_SUM    1      // define OPCODE_SUM as 1
+#define OPCODE_REPLY  2 	 // define OPCODE_REPLY as 2
 
-void protocol_execution(int sock);
-void error_handling(const char *message);
+void protocol_execution(int sock);  // Declare protocol execution function
+void error_handling(const char *message);  // Declare error handling function
 
+
+//  Program usage print function
 void usage(const char *pname)
 {
-  printf(">> Usage: %s [options]\n", pname);
-  printf("Options\n");
-  printf("  -a, --addr       Server's address\n");
-  printf("  -p, --port       Server's port\n");
-  exit(0);
+  printf(">> Usage: %s [options]\n", pname);            // print usage
+  printf("Options\n");                   	        	// print option list
+  printf("  -a, --addr       Server's address\n");		// print server address option
+  printf("  -p, --port       Server's port\n");    		// print server port option
+  exit(0);												// exit program
 }
 
 int main(int argc, char *argv[])
 {
-	int sock;
-	struct sockaddr_in serv_addr;
-  char msg[] = "Hello, World!\n";
-	char message[30] = {0, };
-	int c, port, tmp, str_len;
-  char *pname;
-  uint8_t *addr;
-  uint8_t eflag;
+	int sock;											// socket discripter
+	struct sockaddr_in serv_addr;						// address information struct
+  char msg[] = "Hello, World!\n";						// unused
+	char message[30] = {0, };							// unused
+	int c, port, tmp, str_len;							// c: store getopt_Long() return value, port : store port number, tmp: store string length, str_len : unused
+  char *pname;											// store program name
+  uint8_t *addr;										// store server address
+  uint8_t eflag;										// store error flag for input validation
 
-  pname = argv[0];
-  addr = NULL;
-  port = -1;
-  eflag = 0;
+  pname = argv[0];                                      // program name
+  addr = NULL;											// reset address
+  port = -1;											// reset port (-1)
+  eflag = 0;											// reset error flag	
 
   while (1)
   {
-    int option_index = 0;
-    static struct option long_options[] = {
+    int option_index = 0;								// current option index
+    static struct option long_options[] = {      		// Define long options (--addr, --port) for getopt_long()
       {"addr", required_argument, 0, 'a'},
       {"port", required_argument, 0, 'p'},
       {0, 0, 0, 0}
     };
 
-    const char *opt = "a:p:0";
+    const char *opt = "a:p:0";							// Set -a and -p to require arguments
 
-    c = getopt_long(argc, argv, opt, long_options, &option_index);
+    c = getopt_long(argc, argv, opt, long_options, &option_index);    // Parse command-line arguments and retrieve options
 
-    if (c == -1)
+    if (c == -1)					// Exit loop if no more options remain
       break;
 
     switch (c)
     {
       case 'a':
-        tmp = strlen(optarg);
-        addr = (uint8_t *)malloc(tmp);
-        memcpy(addr, optarg, tmp);
+        tmp = strlen(optarg);               // Calculate server address string length
+        addr = (uint8_t *)malloc(tmp);		// Allocate memory for address storage
+        memcpy(addr, optarg, tmp);			// Allocate memory to store the address
         break;
 
       case 'p':
-        port = atoi(optarg);
+        port = atoi(optarg);				// Store the input server address in memory
         break;
 
       default:
-        usage(pname);
+        usage(pname);						// Print usage and exit on invalid option
     }
   }
 
-  if (!addr)
+  if (!addr)								// Set error flag if server address is missing
   {
     printf("[*] Please specify the server's address to connect\n");
     eflag = 1;
   }
 
-  if (port < 0)
+  if (port < 0)								// Set error flag if port number is invalid
   {
     printf("[*] Please specify the server's port to connect\n");
     eflag = 1;
   }
 
-  if (eflag)
+  if (eflag)								// Print usage and exit if input error occurs
   {
     usage(pname);
     exit(0);
   }
 
-	sock = socket(PF_INET, SOCK_STREAM, 0);
+	sock = socket(PF_INET, SOCK_STREAM, 0);		// Create TCP socket
 	if (sock == -1)
-		error_handling("socket() error");
-	memset(&serv_addr, 0, sizeof(serv_addr));
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr = inet_addr((const char *)addr);
-	serv_addr.sin_port = htons(port);
+		error_handling("socket() error");		// Handle socket creation failure
+	memset(&serv_addr, 0, sizeof(serv_addr));	// Initialize server address structure to zero
+	serv_addr.sin_family = AF_INET;				// Set IPv4 address family
+	serv_addr.sin_addr.s_addr = inet_addr((const char *)addr);		// Convert string IP address to network byte order and set it
+	serv_addr.sin_port = htons(port);			// Convert port number to network byte order and set it
 
-	if (connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1)
-		error_handling("connect() error");
+	if (connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1)   // Try connecting to server, print connection info on success, handle error on failure
+		error_handling("connect() error");							
   printf("[*] Connected to %s:%d\n", addr, port);
   
-  protocol_execution(sock);
+  protocol_execution(sock);  	// Perform protocol communication with server
 
 	close(sock);
-	return 0;
+	return 0;					// Close socket and exit program normally
 }
 
 void protocol_execution(int sock)
