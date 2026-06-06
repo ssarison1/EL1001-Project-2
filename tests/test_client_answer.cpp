@@ -112,12 +112,12 @@ int main(int argc, char *argv[])
 	return 0;					// Close socket and exit program normally
 }
 
-void protocol_execution(int sock)
+void protocol_execution(int sock)  // 서버와의 실제 통신 protocol을 수행하는 함수
 {
-  char msg[] = "Alice";
-  char buf[BUFLEN];
-  int tbs, sent, tbr, rcvd, offset;
-  int len;
+  char msg[] = "Alice";    // 전송할 이름
+  char buf[BUFLEN];			// 송수신 데이터 Buffer
+  int tbs, sent, tbr, rcvd, offset;    // 송수신 관련 변수
+  int len;                             // 데이터 길이 저장
 
   // tbs: the number of bytes to send
   // tbr: the number of bytes to receive
@@ -125,29 +125,29 @@ void protocol_execution(int sock)
 
   // 1. Alice -> Bob: length of the name (4 bytes) || name (length bytes)
   // Send the length information (4 bytes)
-  len = strlen(msg);
-  printf("[*] Length information to be sent: %d\n", len);
+  len = strlen(msg);											// 이름 문자열 길이 계산
+  printf("[*] Length information to be sent: %d\n", len);		// 길이 정보 출력
 
-  len = htonl(len);
-  tbs = 4;
-  offset = 0;
+  len = htonl(len);   	// 길이를 Big Endian으로 변환
+  tbs = 4;				// 전송할 byte 수 설정
+  offset = 0;     		// 전송 위치 초기화
 
-  while (offset < tbs)
+  while (offset < tbs)    // 길이 정보 4 byte를 모두 전송할 때까지 반복 송신
   {
     sent = write(sock, &len + offset, tbs - offset);
-    if (sent > 0)
+    if (sent > 0)			// 전송할 byte 수만큼 offset 증가
       offset += sent;
   }
 
   // Send the name (Alice)
-  tbs = ntohl(len);
-  offset = 0;
+  tbs = ntohl(len);			// 원래 길이 값으로 변환하여 전송 크기 설정
+  offset = 0;				// 전송 위치 초기화
 
-  printf("[*] Name to be sent: %s\n", msg);
-  while (offset < tbs)
+  printf("[*] Name to be sent: %s\n", msg);    // 전송할 이름 출력
+  while (offset < tbs)   					  // 이름 데이터를 모두 전송할 때까지 반복 송신
   {
     sent = write(sock, msg + offset, tbs - offset);
-    if (sent > 0)
+    if (sent > 0)							// 전송할 byte 수만큼 offset 증가
       offset += sent;
   }
 
@@ -159,11 +159,11 @@ void protocol_execution(int sock)
   while (offset < tbr)
   {
 	  rcvd = read(sock, &len + offset, tbr - offset);
-    if (rcvd > 0)
+    if (rcvd > 0)     									// 원래 길이 값으로 변환하여 전송 크기 설정
       offset += rcvd;
   }
-  len = ntohl(len);
-  printf("[*] Length received: %d\n", len);
+  len = ntohl(len);    // 수신한 길이 정보를 big-endian으로 변환
+  printf("[*] Length received: %d\n", len); 
 
   // Receive the name (Bob)
   tbr = len;
